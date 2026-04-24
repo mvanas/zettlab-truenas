@@ -1,0 +1,21 @@
+# Fan control override config
+# Lines starting with # are ignored
+
+# ---- CPU ----
+CPU_TEMP_SOURCE="package"
+TARGET_CPU_C=46
+CPU_TEMP_BIAS_C=4
+CPU_GAIN_TENTHS=28
+CPU_MIN_PWM=70
+
+# ---- HDD ----
+TARGET_HDD_C=38
+HDD_TEMP_BIAS_C=2
+HDD_GAIN_TENTHS=40
+
+# ---- Logging ----
+CPU_TEMP_SPIKE_LOG=6
+HDD_TEMP_SPIKE_LOG=2
+
+# ---- Timing ----
+SLEEP_SECS=12
