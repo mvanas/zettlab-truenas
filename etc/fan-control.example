@@ -1,0 +1,188 @@
+# /etc/fan-control
+# -----------------------------------------------------------------------------
+# Fan Control Override Configuration
+# -----------------------------------------------------------------------------
+#
+#
+# This file overrides the default settings built into fan-control.sh.
+#
+#  Lines beginning with '#' are comments.
+#  Only variables defined here override script defaults.
+#  Missing variables fall back to safe built‑in defaults.
+#
+# Changes can be applied live without restarting the service:
+#
+#     systemctl reload fan-control.service
+#
+# This will re-read this file and apply the new values on the next loop cycle.
+#
+# -----------------------------------------------------------------------------
+# CPU CONTROL
+# -----------------------------------------------------------------------------
+
+# CPU_TEMP_SOURCE:
+#
+# Selects which CPU temperature sensor is used for fan control.
+#
+#   "hottest" -> Uses the hottest available CPU sensor (core/package).
+#                 Safest option
+#                 Fastest reaction to hot spots
+#
+#   "package" -> Uses the CPU package / Tctl temperature if available.
+#                 Quieter, smoother behavior
+#                 Less sensitive to short core bursts
+#
+# If unsure, use:
+#   CPU_TEMP_SOURCE="hottest"
+#
+CPU_TEMP_SOURCE="package"
+
+
+# TARGET_CPU_C:
+#
+# Desired CPU temperature in C.
+# The fan controller will try to keep the *effective* CPU temperature
+# (measured + bias) close to this value.
+#
+# Typical values:
+#   • Quiet systems: 45–50
+#   • Performance / servers: 50–60
+#
+TARGET_CPU_C=50
+
+
+# CPU_TEMP_BIAS_C:
+#
+# Artificial temperature offset added to the measured CPU temperature.
+# This compensates for:
+#    Sensor lag
+#    Averaging in package/Tctl sensors
+#    Differences between BIOS / OS readings
+#
+# Recommended ranges:
+#
+#   When CPU_TEMP_SOURCE="hottest":
+#       0 – 2 C  (already very conservative)
+#
+#   When CPU_TEMP_SOURCE="package":
+#       4 – 6 C  (package temps lag short spikes)
+#
+CPU_TEMP_BIAS_C=5
+
+
+# CPU_GAIN_TENTHS:
+#
+# Controls how aggressively fans ramp in response to CPU temperature.
+#
+# Higher value:
+#   -> Faster and stronger fan ramp
+#
+# Lower value:
+#   -> Smoother, quieter response
+#
+# Typical values:
+#    Quiet systems: 20–28
+#    Balanced systems: 28–35
+#    High airflow servers: 35–45
+#
+CPU_GAIN_TENTHS=28
+
+
+# CPU_MIN_PWM:
+#
+# Minimum allowed PWM value for CPU fans.
+# This prevents fan stall at low speeds.
+#
+# IMPORTANT:
+#   Verify your fans reliably spin at this PWM.
+#
+# Typical values:
+#    60–70 for most 120mm fans
+#    Higher for high‑pressure or server fans
+#
+CPU_MIN_PWM=70
+
+
+# -----------------------------------------------------------------------------
+# HDD CONTROL
+# -----------------------------------------------------------------------------
+
+# TARGET_HDD_C:
+#
+# Desired temperature in C for the *hottest detected HDD*.
+# The controller always uses the hottest drive reported via SMART.
+#
+# Typical values:
+#    Conservative / longevity: 35–38
+#    Normal operation: 38–42
+#
+TARGET_HDD_C=38
+
+
+# HDD_TEMP_BIAS_C:
+#
+# Offset applied to HDD SMART temperatures.
+# Compensates for:
+#    SMART reporting delay
+#    Internal vs surface temperature differences
+#
+# Typical values:
+#    1–3 C
+#
+HDD_TEMP_BIAS_C=2
+
+
+# HDD_GAIN_TENTHS:
+#
+# Fan aggressiveness based on HDD temperatures.
+#
+# HDDs usually require more airflow than CPUs for small temp changes,
+# so this value is often higher than CPU_GAIN_TENTHS.
+#
+# Typical values:
+#    Quiet systems: 30–35
+#    Dense disk systems: 35–50
+#
+HDD_GAIN_TENTHS=40
+
+
+# -----------------------------------------------------------------------------
+# LOGGING
+# -----------------------------------------------------------------------------
+
+# CPU_TEMP_SPIKE_LOG:
+#
+# Log a message only when CPU temperature jumps suddenly by this amount C.
+# Prevents log spam while still recording meaningful events.
+#
+CPU_TEMP_SPIKE_LOG=6
+
+
+# HDD_TEMP_SPIKE_LOG:
+# 
+# Same as above, but for HDD temperatures.
+# HDD temps usually change slowly, so smaller thresholds make sense.
+#
+HDD_TEMP_SPIKE_LOG=2
+
+
+# -----------------------------------------------------------------------------
+# TIMING
+# -----------------------------------------------------------------------------
+
+# SLEEP_SECS:
+#
+# Control loop interval in seconds.
+#
+# Lower values:
+#    Faster reaction
+#    Slightly more CPU usage
+#
+# Higher values:
+#    Smoother behavior
+#    Less frequent fan write updates
+#
+# Typical range:
+#    8–15 seconds
+#
+SLEEP_SECS=12
