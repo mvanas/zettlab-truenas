@@ -53,10 +53,26 @@ For convenience, the following files are included in this repository:
 
 TrueNAS SCALE is **immutable by default** and does **not** include DKMS or kernel development tools.
 
-### 1. Temporarily Make the Root Filesystem Writable
+### 1. Make the Root Filesystem Writable
+To completely disable rootfs protection run the following command
+```
+sudo /usr/local/libexec/disable-rootfs-protection
+```
+
+**Alternative method (not tried)**
+Temporary disable write protection via
 ```
 systemd-sysext unmerge
 ```
+
+This should allow to enable write protection again via:
+```
+systemd-sysext merge
+```
+This restores the default immutable TrueNAS SCALE environment.
+
+---
+
 
 ### 2. Enable Developer Mode
 ```
@@ -182,15 +198,5 @@ chip "zettlab_d8_fans-*"
    compute pwm2 (@ * 200 / 183), (@ * 183 / 200)
    compute pwm3 (@ * 200 / 183), (@ * 183 / 200)
 ```
----
-
-## Restore Read‑Only System State (Required)
-
-After installing drivers and configuring services:
-```
-systemd-sysext merge
-```
-This restores the default immutable TrueNAS SCALE environment.
-
 ---
 
