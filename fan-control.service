@@ -1,7 +1,7 @@
-# fan-control.service
+# /etc/systemd/system/fan-control.service
 #
 # Systemd service for fan-control.sh
-# Supports live reload via `systemctl reload fan-control.service`
+# Supports live reload via 'systemctl reload fan-control.service'
 
 [Unit]
 Description=Fan control service for Zettlab D6U/D8U
