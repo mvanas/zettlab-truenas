@@ -1,6 +1,7 @@
 # Zettlab D6/D8 Ultra – TrueNAS SCALE
 
 Fan control for Zettlab D6U / D8U Ultra systems using TrueNAS SCALE.
+TrueNAS 26 Beta is required and include the 10GB Realtek network drivers.
 
 ---
 
