@@ -136,6 +136,11 @@ sudo cp fan-control.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now fan-control.service
 ```
+To verify the service is ruinning use:
+```
+systemctl status fan-control.service
+journalctl -u fan-control.service -f
+```
 ---
 
 ## Configuration – `/etc/fan-control`
@@ -159,6 +164,7 @@ See fan-control.example in this repository.
 After editing `/etc/fan-control`:
 ```
 systemctl reload fan-control.service
+journalctl -u fan-control.service -f
 ```
 - No restart
 - No fan interruption
