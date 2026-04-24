@@ -63,12 +63,12 @@ sudo /usr/local/libexec/disable-rootfs-protection
 
 Temporary disable write protection via:
 ```
-systemd-sysext unmerge
+sudo systemd-sysext unmerge
 ```
 
 To restore the default immutable environment:
 ```
-systemd-sysext merge
+sudo systemd-sysext merge
 ```
 
 
@@ -77,15 +77,15 @@ systemd-sysext merge
 
 ### 2. Enable Developer Mode
 ```
-install-dev-tools
-apt update
+sudo install-dev-tools
+sudo apt update
 ```
 ---
 
 ### 3. Install DKMS and Build Dependencies
 ```
-apt install dkms devscripts debhelper dh-dkms -y
-apt install linux-headers-$(uname -r) -y
+sudo apt install dkms devscripts debhelper dh-dkms -y
+sudo apt install linux-headers-$(uname -r) -y
 ```
 These packages are required **only** for building the driver.
 
@@ -96,7 +96,7 @@ These packages are required **only** for building the driver.
 ### 1. Prepare the DKMS source directory
 
 ```
-mkdir -p /usr/src/zettlab-d8-fans-0.0.1
+sudo mkdir -p /usr/src/zettlab-d8-fans-0.0.1
 ```
 Copy the following files into this directory:
 
@@ -109,22 +109,22 @@ Copy the following files into this directory:
 ### 2. Register, build, and install the module
 
 ```
-dkms add -m zettlab-d8-fans -v 0.0.1
-dkms build -m zettlab-d8-fans -v 0.0.1
-dkms install -m zettlab-d8-fans -v 0.0.1
+sudo dkms add -m zettlab-d8-fans -v 0.0.1
+sudo dkms build -m zettlab-d8-fans -v 0.0.1
+sudo dkms install -m zettlab-d8-fans -v 0.0.1
 ```
 ---
 
 ### 3. Load the module
 ```
-modprobe zettlab_d8_fans
+sudo modprobe zettlab_d8_fans
 ```
 ---
 
 ### 4. Verify hwmon Detection
 
 ```
-cat /sys/class/hwmon/hwmon*/name
+sudo cat /sys/class/hwmon/hwmon*/name
 ```
 Expected output includes:
 
@@ -137,7 +137,7 @@ zettlab_d8_fans
 
 ## Enable Driver Auto‑Loading at Boot
 ```
-echo zettlab_d8_fans | sudo tee /etc/modules-load.d/zettlab_d8_fans.conf
+sudo echo zettlab_d8_fans | sudo tee /etc/modules-load.d/zettlab_d8_fans.conf
 ```
 
 ---
@@ -155,8 +155,8 @@ sudo systemctl enable --now fan-control.service
 ```
 To verify the service is ruinning use:
 ```
-systemctl status fan-control.service
-journalctl -u fan-control.service -f
+sudo systemctl status fan-control.service
+sudo journalctl -u fan-control.service -f
 ```
 ---
 
@@ -180,8 +180,8 @@ See fan-control.example in this repository.
 
 After editing `/etc/fan-control`:
 ```
-systemctl reload fan-control.service
-journalctl -u fan-control.service -f
+sudo systemctl reload fan-control.service
+sudo journalctl -u fan-control.service -f
 ```
 - No restart
 - No fan interruption
