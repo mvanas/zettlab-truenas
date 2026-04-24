@@ -60,16 +60,17 @@ sudo /usr/local/libexec/disable-rootfs-protection
 ```
 
 **Alternative method (not tried)**
-Temporary disable write protection via
+
+Temporary disable write protection via:
 ```
 systemd-sysext unmerge
 ```
 
-This should allow to enable write protection again via:
+To restore the default immutable environment:
 ```
 systemd-sysext merge
 ```
-This restores the default immutable TrueNAS SCALE environment.
+
 
 ---
 
