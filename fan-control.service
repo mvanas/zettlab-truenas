@@ -1,0 +1,14 @@
+# /etc/systemd/system/fan-control.service
+[Unit]
+Description=Fan control service for Zettlab D6U/D8U
+After=sysinit.target multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/bin/bash /usr/local/sbin/fan-control.sh
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
