@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# fan-control.sh
+# /usr/local/sbin/fan-control.sh
 #
 # Dynamic fan control daemon for Zettlab D6U / D8U systems running
 # TrueNAS SCALE or other Linux systems with hwmon support.
