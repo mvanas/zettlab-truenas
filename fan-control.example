@@ -1,8 +1,8 @@
+# /etc/fan-control
 # -----------------------------------------------------------------------------
 # Fan Control Override Configuration
 # -----------------------------------------------------------------------------
 #
-# save as: /etc/fan-control
 #
 # This file overrides the default settings built into fan-control.sh.
 #
