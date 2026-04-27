@@ -201,4 +201,31 @@ chip "zettlab_d8_fans-*"
    compute pwm3 (@ * 200 / 183), (@ * 183 / 200)
 ```
 ---
+## Related Sources
 
+zettlab-d8-fans driver (Haveacry / Dean Holland)
+DKMS‑compatible kernel driver exposing the Zettlab D6U/D8U fan controller via hwmon.
+https://github.com/Haveacry/zettlab-d8-fans
+
+
+Zettlab Ubuntu installation guide (Henry Wong)
+Detailed documentation and tooling for installing and running Ubuntu on Zettlab D6U/D8U systems.
+https://github.com/henryxwong/zettlab-ubuntu
+
+
+Alternative TrueNAS fan control approach (Ceveos)
+Early community contribution demonstrating fan control and TrueNAS operation on Zettlab D6U/D8U hardware.
+https://github.com/Ceveos/zettlab-d8-fans-truenas
+
+### Acknowledgements
+Thanks to everyone who shared findings, test results, and hardware details that helped make reliable fan control on Zettlab systems possible.
+In particular:
+
+Dean Holland (Haveacry / Speedster)
+For developing and publishing the zettlab_d8_fans DKMS driver and documenting the fan controller behavior.
+
+Henry Wong
+For extensive work documenting Ubuntu installation and hardware enablement on Zettlab D6U/D8U platforms.
+
+Ceveos
+For early exploration and alternative approaches to running TrueNAS on Zettlab hardware, helping validate feasibility and direction.
