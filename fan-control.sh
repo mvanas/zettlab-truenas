@@ -97,6 +97,15 @@ HDD_MISS_TOLERANCE=3
 # block the CPU control loop.
 SMARTCTL_TIMEOUT_SECS=10
 
+# ---------- PWM output shaping ----------
+# The applied fan PWM follows the controller target with rate limits
+# and a deadband, so fans do not change speed on every small
+# temperature wobble (anti-hunting). Rise stays fast for safety;
+# fall is intentionally slow and damped.
+PWM_RISE_STEP=6     # max PWM increase per control cycle
+PWM_FALL_STEP=2     # max PWM decrease per control cycle
+PWM_DEADBAND=4      # ignore target changes smaller than this
+
 # ---------- General ----------
 SLEEP_SECS=10
 
@@ -175,6 +184,9 @@ CPU_READ_FAIL_LIMIT=$CPU_READ_FAIL_LIMIT
 HDD_POLL_EVERY=$HDD_POLL_EVERY
 HDD_MISS_TOLERANCE=$HDD_MISS_TOLERANCE
 SMARTCTL_TIMEOUT_SECS=$SMARTCTL_TIMEOUT_SECS
+PWM_RISE_STEP=$PWM_RISE_STEP
+PWM_FALL_STEP=$PWM_FALL_STEP
+PWM_DEADBAND=$PWM_DEADBAND
 SLEEP_SECS=$SLEEP_SECS
 EOF
   exit 0
@@ -341,6 +353,53 @@ write_pwm() {
   fi
 }
 
+# Damped/limited next PWM value (anti-hunting output shaping).
+slew_target() {
+  # slew_target <current_applied> <controller_target>
+  local cur="$1" tgt="$2" step
+  if (( tgt == cur )); then
+    printf '%d\n' "$cur"
+    return 0
+  fi
+  if (( tgt > cur )); then
+    if (( tgt - cur <= PWM_DEADBAND )); then
+      printf '%d\n' "$cur"
+      return 0
+    fi
+    step=$(( tgt - cur ))
+    if (( step > PWM_RISE_STEP )); then
+      step=$PWM_RISE_STEP
+    fi
+  else
+    if (( cur - tgt <= PWM_DEADBAND )); then
+      printf '%d\n' "$cur"
+      return 0
+    fi
+    step=$(( cur - tgt ))
+    if (( step > PWM_FALL_STEP )); then
+      step=$PWM_FALL_STEP
+    fi
+    step=$(( -step ))
+  fi
+  printf '%d\n' $(( cur + step ))
+}
+
+# Applied (slew-limited) PWM per output channel.
+declare -A PWM_APPLIED
+
+slew_write() {
+  # slew_write <pwm_out> <target> <normal|force>
+  # "force" bypasses shaping (safety paths, first write after start).
+  local out="$1" tgt="$2" mode="$3" new
+  if [[ "$mode" == "force" || -z "${PWM_APPLIED[$out]:-}" ]]; then
+    new="$tgt"
+  else
+    new=$(slew_target "${PWM_APPLIED[$out]}" "$tgt")
+  fi
+  write_pwm "$out" "$new"
+  PWM_APPLIED[$out]="$new"
+}
+
 log_temp_spike() {
   # log_temp_spike <previous_raw> <current_raw> <threshold_C> <label>
   local prev="$1" cur="$2" thr="$3" label="$4" delta
@@ -381,6 +440,12 @@ if $RUN_TESTS; then
   check "pwm clamps to min"    "$(calc_pwm 30 48 32 65 183)" "65"
   check "pwm clamps to max"    "$(calc_pwm 90 48 32 65 183)" "183"
   check "pwm linear"           "$(calc_pwm 60 48 32 65 183)" "103"
+  check "slew rise limited"    "$(slew_target 100 110)" "106"
+  check "slew fall limited"    "$(slew_target 100 95)"  "98"
+  check "slew fall big gap"    "$(slew_target 100 60)"  "98"
+  check "slew deadband rise"   "$(slew_target 100 103)" "100"
+  check "slew deadband fall"   "$(slew_target 100 97)"  "100"
+  check "slew no change"       "$(slew_target 100 100)" "100"
   echo "Self-test: $pass passed, $fail failed"
   exit $(( fail > 0 ? 1 : 0 ))
 fi
@@ -449,13 +514,15 @@ while true; do
 
     if (( eff_cpu >= CPU_MAX_SAFE_TEMP_C )); then
       cpu_pwm="$CPU_MAX_PWM"
+      cpu_write_mode="force"
     else
       cpu_pwm=$(calc_pwm "$cpu_ema" "$TARGET_CPU_C" "$CPU_GAIN_TENTHS" "$CPU_MIN_PWM" "$CPU_MAX_PWM")
+      cpu_write_mode="normal"
     fi
 
     dry_log "CPU raw=${raw_cpu}C eff=${eff_cpu}C ema=${cpu_ema} pwm=${cpu_pwm} hottest=${cpu_label:-unknown}"
     if ! $DRY_RUN; then
-      write_pwm "$CPU_PWM_OUT" "$cpu_pwm"
+      slew_write "$CPU_PWM_OUT" "$cpu_pwm" "$cpu_write_mode"
     fi
   else
     cpu_fail_count=$(( cpu_fail_count + 1 ))
@@ -465,7 +532,7 @@ while true; do
         cpu_forced=true
       fi
       if ! $DRY_RUN; then
-        write_pwm "$CPU_PWM_OUT" "$CPU_MAX_PWM"
+        slew_write "$CPU_PWM_OUT" "$CPU_MAX_PWM" "force"
       fi
     else
       dry_log "CPU read failed (${cpu_fail_count}/${CPU_READ_FAIL_LIMIT}); holding last PWM"
@@ -497,7 +564,7 @@ while true; do
 
       if ! $DRY_RUN; then
         for o in "${HDD_PWM_OUTS[@]}"; do
-          write_pwm "$o" "$hdd_pwm"
+          slew_write "$o" "$hdd_pwm" "normal"
         done
       fi
     elif [[ "$HDD_POLL_STATUS" == "standby" ]]; then
@@ -516,7 +583,7 @@ while true; do
         fi
         if ! $DRY_RUN; then
           for o in "${HDD_PWM_OUTS[@]}"; do
-            write_pwm "$o" "$HDD_FALLBACK_PWM"
+            slew_write "$o" "$HDD_FALLBACK_PWM" "force"
           done
         fi
       else

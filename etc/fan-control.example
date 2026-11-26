@@ -59,6 +59,10 @@ TARGET_CPU_C=50
 #    Averaging in package/Tctl sensors
 #    Differences between BIOS / OS readings
 #
+# Set to 0 if you want the controller to track the reported sensor
+# temperature exactly (the raw values in the dry-run log already
+# match what the TrueNAS GUI shows).
+#
 # Recommended ranges:
 #
 #   When CPU_TEMP_SOURCE="hottest":
@@ -187,6 +191,36 @@ SMARTCTL_TIMEOUT_SECS=10
 # CPU_MAX_PWM is forced as a safety measure.
 #
 CPU_READ_FAIL_LIMIT=3
+
+
+# -----------------------------------------------------------------------------
+# PWM OUTPUT SHAPING
+# -----------------------------------------------------------------------------
+
+# PWM_RISE_STEP:
+#
+# Maximum PWM increase per control cycle. Keeps fan spin-ups quick
+# enough for thermal protection while avoiding abrupt jumps.
+#
+PWM_RISE_STEP=6
+
+
+# PWM_FALL_STEP:
+#
+# Maximum PWM decrease per control cycle. Fans ramp down slowly and
+# gently instead of tracking every small temperature dip. This is the
+# main knob if you want the fans to slow down even more gradually.
+#
+PWM_FALL_STEP=2
+
+
+# PWM_DEADBAND:
+#
+# Target changes smaller than this many PWM counts are ignored.
+# Prevents the fans from constantly changing speed (hunting) when
+# temperatures wobble by a degree between polls.
+#
+PWM_DEADBAND=4
 
 
 # -----------------------------------------------------------------------------
