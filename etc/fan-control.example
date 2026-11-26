@@ -59,6 +59,10 @@ TARGET_CPU_C=50
 #    Averaging in package/Tctl sensors
 #    Differences between BIOS / OS readings
 #
+# Set to 0 if you want the controller to track the reported sensor
+# temperature exactly (the raw values in the dry-run log already
+# match what the TrueNAS GUI shows).
+#
 # Recommended ranges:
 #
 #   When CPU_TEMP_SOURCE="hottest":
@@ -144,6 +148,79 @@ HDD_TEMP_BIAS_C=2
 #    Dense disk systems: 35–50
 #
 HDD_GAIN_TENTHS=40
+
+
+# -----------------------------------------------------------------------------
+# HDD POLLING & FAILURE HANDLING
+# -----------------------------------------------------------------------------
+
+# HDD_POLL_EVERY:
+#
+# Read drive SMART temperatures only every Nth control cycle.
+# HDD temperatures change slowly, and each poll runs smartctl against
+# every drive. Sleeping drives are never woken by a poll.
+#
+# At SLEEP_SECS=10, HDD_POLL_EVERY=6 polls drives every ~60 seconds.
+#
+# Typical range:
+#    3–6 (30–60 seconds)
+#
+HDD_POLL_EVERY=6
+
+
+# HDD_MISS_TOLERANCE:
+#
+# Consecutive failed SMART polls tolerated before the fallback PWM is
+# forced. Drives in sleep/standby never trigger this; their PWM is
+# simply held, since a spun-down drive produces no new heat.
+#
+HDD_MISS_TOLERANCE=3
+
+
+# SMARTCTL_TIMEOUT_SECS:
+#
+# Per-drive timeout for smartctl. Prevents a hung or dying drive from
+# blocking the CPU fan control loop.
+#
+SMARTCTL_TIMEOUT_SECS=10
+
+
+# CPU_READ_FAIL_LIMIT:
+#
+# Consecutive failed CPU temperature reads tolerated before
+# CPU_MAX_PWM is forced as a safety measure.
+#
+CPU_READ_FAIL_LIMIT=3
+
+
+# -----------------------------------------------------------------------------
+# PWM OUTPUT SHAPING
+# -----------------------------------------------------------------------------
+
+# PWM_RISE_STEP:
+#
+# Maximum PWM increase per control cycle. Keeps fan spin-ups quick
+# enough for thermal protection while avoiding abrupt jumps.
+#
+PWM_RISE_STEP=6
+
+
+# PWM_FALL_STEP:
+#
+# Maximum PWM decrease per control cycle. Fans ramp down slowly and
+# gently instead of tracking every small temperature dip. This is the
+# main knob if you want the fans to slow down even more gradually.
+#
+PWM_FALL_STEP=2
+
+
+# PWM_DEADBAND:
+#
+# Target changes smaller than this many PWM counts are ignored.
+# Prevents the fans from constantly changing speed (hunting) when
+# temperatures wobble by a degree between polls.
+#
+PWM_DEADBAND=4
 
 
 # -----------------------------------------------------------------------------
