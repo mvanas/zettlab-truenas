@@ -63,13 +63,19 @@ TARGET_CPU_C=50
 # temperature exactly (the raw values in the dry-run log already
 # match what the TrueNAS GUI shows).
 #
+# IMPORTANT:
+#   The emergency threshold below triggers on the *effective*
+#   temperature (raw + bias). With CPU_TEMP_BIAS_C=5 and
+#   CPU_MAX_SAFE_TEMP_C=88 the raw sensor trigger point is 83C.
+#   Adjust these two values together.
+#
 # Recommended ranges:
 #
 #   When CPU_TEMP_SOURCE="hottest":
 #       0 – 2 C  (already very conservative)
 #
 #   When CPU_TEMP_SOURCE="package":
-#       4 – 6 C  (package temps lag short spikes)
+#       2 – 6 C  (package temps lag short spikes)
 #
 CPU_TEMP_BIAS_C=5
 
@@ -94,7 +100,7 @@ CPU_GAIN_TENTHS=28
 
 # CPU_MIN_PWM:
 #
-# Minimum allowed PWM value for CPU fans.
+# Minimum allowed PWM value for the CPU fan.
 # This prevents fan stall at low speeds.
 #
 # IMPORTANT:
@@ -105,6 +111,67 @@ CPU_GAIN_TENTHS=28
 #    Higher for high‑pressure or server fans
 #
 CPU_MIN_PWM=70
+
+
+# CPU_MAX_PWM:
+#
+# Maximum allowed PWM value for the CPU fan.
+#
+# NOTE:
+#   The Zettlab fan controller hardware limit is 183 (0xB7).
+#   Do not raise this above 183; writes above the limit are rejected.
+#
+# This value is also forced immediately when the CPU overheats
+# (see CPU_MAX_SAFE_TEMP_C) or when its temperature cannot be read.
+#
+CPU_MAX_PWM=183
+
+
+# CPU_MAX_SAFE_TEMP_C:
+#
+# EMERGENCY threshold on the *effective* CPU temperature (raw + bias).
+# When the effective temperature reaches this value the CPU fan is
+# forced to CPU_MAX_PWM immediately, bypassing the slow ramp-down
+# (see PWM_FALL_STEP below).
+#
+# See the CPU_TEMP_BIAS_C section above: with a bias of 5 the raw
+# sensor trigger point is 5C below this value.
+#
+# Typical values:
+#    85–90 for bursty workloads (LLM inference, compilation)
+#    Keep well below the CPU Tjmax (typically 100–105C)
+#
+CPU_MAX_SAFE_TEMP_C=88
+
+
+# CPU_RISE_EMA / CPU_FALL_EMA:
+#
+# Exponential moving average applied to the effective CPU temperature.
+# Each control cycle, the EMA moves this percentage of the remaining
+# distance toward the raw value.
+#
+#   CPU_RISE_EMA: applied when the raw temperature is ABOVE the EMA.
+#                Higher = faster reaction to heating (safety).
+#
+#   CPU_FALL_EMA: applied when the raw temperature is BELOW the EMA.
+#                Lower = slower, gentler cool-down of the EMA, which
+#                keeps the fans from dropping too quickly after load.
+#
+# Typical values:
+#    Rise: 20–35
+#    Fall: 5–12
+#
+CPU_RISE_EMA=25
+CPU_FALL_EMA=8
+
+
+# CPU_READ_FAIL_LIMIT:
+#
+# Consecutive failed CPU temperature reads tolerated before the CPU
+# fan is forced to CPU_MAX_PWM as a safety measure. Control resumes
+# automatically once the sensor becomes readable again.
+#
+CPU_READ_FAIL_LIMIT=3
 
 
 # -----------------------------------------------------------------------------
@@ -150,6 +217,56 @@ HDD_TEMP_BIAS_C=2
 HDD_GAIN_TENTHS=40
 
 
+# HDD_MIN_PWM:
+#
+# Minimum allowed PWM value for the disk fans.
+# Prevents fan stall at low speeds.
+#
+# IMPORTANT:
+#   Verify your fans reliably spin at this PWM.
+#
+HDD_MIN_PWM=60
+
+
+# HDD_MAX_PWM:
+#
+# Maximum allowed PWM value for the disk fans.
+#
+# NOTE:
+#   The Zettlab fan controller hardware limit is 183 (0xB7).
+#
+HDD_MAX_PWM=170
+
+
+# HDD_FALLBACK_PWM:
+#
+# PWM value forced on the disk fans when drive temperatures are
+# unavailable (SMART failures), and when the fan-control daemon exits.
+# Deliberately mid-to-high so the disk cage stays cooled without any
+# temperature information.
+#
+# Note: drives in sleep/standby do NOT trigger this value; their PWM
+# is simply held, since a spun-down drive produces no new heat.
+#
+HDD_FALLBACK_PWM=145
+
+
+# HDD_RISE_EMA / HDD_FALL_EMA:
+#
+# Exponential moving average applied to the effective HDD temperature,
+# analogous to CPU_RISE_EMA / CPU_FALL_EMA above.
+#
+# HDD temperatures change much more slowly than CPU temperatures, so
+# the fall value can be lower still for very smooth cool-down.
+#
+# Typical values:
+#    Rise: 25–40
+#    Fall: 5–12
+#
+HDD_RISE_EMA=35
+HDD_FALL_EMA=10
+
+
 # -----------------------------------------------------------------------------
 # HDD POLLING & FAILURE HANDLING
 # -----------------------------------------------------------------------------
@@ -185,14 +302,6 @@ HDD_MISS_TOLERANCE=3
 SMARTCTL_TIMEOUT_SECS=10
 
 
-# CPU_READ_FAIL_LIMIT:
-#
-# Consecutive failed CPU temperature reads tolerated before
-# CPU_MAX_PWM is forced as a safety measure.
-#
-CPU_READ_FAIL_LIMIT=3
-
-
 # -----------------------------------------------------------------------------
 # PWM OUTPUT SHAPING
 # -----------------------------------------------------------------------------
@@ -209,7 +318,8 @@ PWM_RISE_STEP=6
 #
 # Maximum PWM decrease per control cycle. Fans ramp down slowly and
 # gently instead of tracking every small temperature dip. This is the
-# main knob if you want the fans to slow down even more gradually.
+# main knob if you want the fans to slow down even more gradually
+# (or faster, after an emergency max-speed event).
 #
 PWM_FALL_STEP=2
 
@@ -232,11 +342,14 @@ PWM_DEADBAND=4
 # Log a message only when CPU temperature jumps suddenly by this amount C.
 # Prevents log spam while still recording meaningful events.
 #
+# NOTE: with a noisy package sensor under bursty workloads (e.g. LLM
+# inference), 5–6 C fires very often; 8–12 is quieter.
+#
 CPU_TEMP_SPIKE_LOG=6
 
 
 # HDD_TEMP_SPIKE_LOG:
-# 
+#
 # Same as above, but for HDD temperatures.
 # HDD temps usually change slowly, so smaller thresholds make sense.
 #
@@ -251,6 +364,13 @@ HDD_TEMP_SPIKE_LOG=2
 #
 # Control loop interval in seconds.
 #
+# IMPORTANT:
+#   PWM values are written every cycle as the heartbeat for the
+#   zettlab_d8_fans driver watchdog (which forces safe PWM after 60 s
+#   without a userspace write). If you increase SLEEP_SECS well beyond
+#   10–15 s, verify the driver watchdog timeout still fits:
+#   driver watchdog_timeout must exceed the longest write interval.
+#
 # Lower values:
 #    Faster reaction
 #    Slightly more CPU usage
@@ -263,3 +383,16 @@ HDD_TEMP_SPIKE_LOG=2
 #    8–15 seconds
 #
 SLEEP_SECS=12
+
+
+# -----------------------------------------------------------------------------
+# ADVANCED - HARDWARE MAPPING
+# -----------------------------------------------------------------------------
+#
+# These map controller outputs to the hwmon channels exposed by the
+# zettlab_d8_fans driver. DO NOT change them unless a future driver
+# revision changes the hwmon channel layout (pwm1/pwm2 = disk fans,
+# pwm3 = CPU fan).
+#
+# CPU_PWM_OUT="pwm3"
+# HDD_PWM_OUTS=("pwm1" "pwm2")
