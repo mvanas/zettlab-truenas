@@ -341,16 +341,12 @@ calc_pwm() {
   printf '%d\n' "$pwm"
 }
 
-# Track last written PWM values so unchanged values are not written
-# to sysfs every cycle.
-declare -A PWM_STATE
-
+# NOTE: always write the PWM value, even when unchanged. The write
+# doubles as the heartbeat for the zettlab_d8_fans driver watchdog:
+# if these writes stop, the driver forces a safe (maximum) PWM after
+# its watchdog timeout. The cost is one cheap sysfs write per cycle.
 write_pwm() {
-  local out="$1" val="$2"
-  if [[ "${PWM_STATE[$out]:-}" != "$val" ]]; then
-    printf '%d\n' "$val" >"$ZETTLAB_HWMON/$out"
-    PWM_STATE[$out]="$val"
-  fi
+  printf '%d\n' "$2" >"$ZETTLAB_HWMON/$1"
 }
 
 # Damped/limited next PWM value (anti-hunting output shaping).
@@ -457,7 +453,8 @@ fi
 on_exit() {
   local rc=$?
   # If the daemon dies unexpectedly, drive all fans to safe levels so
-  # the system is never left unsupervised with slow fans.
+  # the system is never left unsupervised with slow fans. The driver
+  # watchdog will also force maximum PWM once our writes stop.
   if [[ -n "${ZETTLAB_HWMON:-}" ]] && ! $DRY_RUN && ! $RUN_ONCE; then
     printf '%d\n' "$CPU_MAX_PWM" >"$ZETTLAB_HWMON/$CPU_PWM_OUT" 2>/dev/null || true
     for o in "${HDD_PWM_OUTS[@]}"; do
