@@ -147,6 +147,49 @@ HDD_GAIN_TENTHS=40
 
 
 # -----------------------------------------------------------------------------
+# HDD POLLING & FAILURE HANDLING
+# -----------------------------------------------------------------------------
+
+# HDD_POLL_EVERY:
+#
+# Read drive SMART temperatures only every Nth control cycle.
+# HDD temperatures change slowly, and each poll runs smartctl against
+# every drive. Sleeping drives are never woken by a poll.
+#
+# At SLEEP_SECS=10, HDD_POLL_EVERY=6 polls drives every ~60 seconds.
+#
+# Typical range:
+#    3–6 (30–60 seconds)
+#
+HDD_POLL_EVERY=6
+
+
+# HDD_MISS_TOLERANCE:
+#
+# Consecutive failed SMART polls tolerated before the fallback PWM is
+# forced. Drives in sleep/standby never trigger this; their PWM is
+# simply held, since a spun-down drive produces no new heat.
+#
+HDD_MISS_TOLERANCE=3
+
+
+# SMARTCTL_TIMEOUT_SECS:
+#
+# Per-drive timeout for smartctl. Prevents a hung or dying drive from
+# blocking the CPU fan control loop.
+#
+SMARTCTL_TIMEOUT_SECS=10
+
+
+# CPU_READ_FAIL_LIMIT:
+#
+# Consecutive failed CPU temperature reads tolerated before
+# CPU_MAX_PWM is forced as a safety measure.
+#
+CPU_READ_FAIL_LIMIT=3
+
+
+# -----------------------------------------------------------------------------
 # LOGGING
 # -----------------------------------------------------------------------------
 
